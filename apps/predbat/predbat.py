@@ -84,6 +84,7 @@ from output import Output
 from userinterface import UserInterface
 from alertfeed import Alertfeed
 from compare import Compare
+from metrics import PredBatMetrics
 
 
 class PredBat(hass.Hass, Octopus, Energidataservice, Solcast, GECloud, Alertfeed, Fetch, Plan, Execute, Output, UserInterface):
@@ -386,6 +387,7 @@ class PredBat(hass.Hass, Octopus, Energidataservice, Solcast, GECloud, Alertfeed
         self.plan_valid = False
         self.plan_last_updated = None
         self.plan_last_updated_minutes = 0
+        self.metrics = None
         self.calculate_plan_every = 5
         self.prediction_started = False
         self.update_pending = True
@@ -869,6 +871,13 @@ class PredBat(hass.Hass, Octopus, Energidataservice, Solcast, GECloud, Alertfeed
             )
         self.expose_config("active", False)
         self.save_current_config()
+        
+        # Update metrics at the end of each update cycle
+        if self.metrics:
+            try:
+                self.metrics.collect_current_metrics()
+            except Exception as e:
+                self.log("Warning: Failed to update metrics: {}".format(e))
 
         if self.comparison:
             if (scheduled and self.minutes_now < RUN_EVERY) or self.get_arg("compare_active", False):
@@ -1328,6 +1337,13 @@ class PredBat(hass.Hass, Octopus, Energidataservice, Solcast, GECloud, Alertfeed
             self.log("Starting web interface")
             self.web_interface = WebInterface(self)
             self.web_interface_task = self.create_task(self.web_interface.start())
+            
+            self.log("Starting metrics collection")
+            try:
+                self.metrics = PredBatMetrics(self)
+            except Exception as e:
+                self.log("Warning: Failed to initialize metrics collection: {}".format(e))
+                self.metrics = None
 
             if self.get_arg("octopus_api_key", "") and self.get_arg("octopus_api_account", ""):
                 self.log("Starting Octopus API interface")

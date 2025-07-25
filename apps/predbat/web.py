@@ -102,6 +102,7 @@ class WebInterface:
         app.router.add_get("/debug_apps", self.html_debug_apps)
         app.router.add_get("/debug_plan", self.html_debug_plan)
         app.router.add_get("/compare", self.html_compare)
+        app.router.add_get("/metrics", self.metrics_handler)
         app.router.add_post("/compare", self.html_compare_post)
         app.router.add_get("/apps_editor", self.html_apps_editor)
         app.router.add_post("/apps_editor", self.html_apps_editor_post)
@@ -3841,6 +3842,42 @@ function discardAllChanges() {
                 await self.base.trigger_callback(service_data)
 
         return await self.html_compare(request)
+
+    async def metrics_handler(self, request):
+        """
+        Handle Prometheus metrics endpoint
+        """
+        import time
+        start_time = time.time()
+        
+        try:
+            from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+            
+            # Update current metrics if metrics collector is available
+            if hasattr(self.base, 'metrics') and self.base.metrics:
+                self.base.metrics.collect_current_metrics()
+                
+            # Record this web request
+            if hasattr(self.base, 'metrics') and self.base.metrics:
+                response_time = time.time() - start_time
+                self.base.metrics.record_web_request('/metrics', response_time)
+            
+            return web.Response(
+                body=generate_latest(), 
+                content_type=CONTENT_TYPE_LATEST
+            )
+        except ImportError:
+            self.log("Error: prometheus_client not installed, cannot serve metrics")
+            return web.Response(
+                status=503,
+                text="Metrics endpoint unavailable: prometheus_client not installed"
+            )
+        except Exception as e:
+            self.log(f"Error serving metrics: {e}")
+            return web.Response(
+                status=500,
+                text=f"Error serving metrics: {e}"
+            )
 
     def to_pounds(self, cost):
         """
