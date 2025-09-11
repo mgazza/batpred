@@ -777,6 +777,103 @@ class GECloudDirect:
             self.log("Error: GECloud: Failed to send EVC command {} params {}".format(command, params))
         return data
 
+    async def async_set_evc_schedule(self, uuid, schedule_slots):
+        """
+        Set EVC charging schedule
+        Schedule slots should be a list of dicts with:
+        - start_time: ISO format datetime
+        - end_time: ISO format datetime
+        - enabled: bool
+        """
+        params = {"schedule": schedule_slots}
+        return await self.async_send_evc_command(uuid, "set-schedule", params)
+
+    async def async_set_evc_mode(self, uuid, mode):
+        """
+        Set EVC charging mode
+        Modes: 'Solar', 'Grid', 'Mixed'
+        """
+        params = {"mode": mode}
+        return await self.async_send_evc_command(uuid, "change-mode", params)
+
+    async def async_set_evc_charge_limit(self, uuid, power_watts):
+        """
+        Set EVC charge power limit in watts
+        """
+        params = {"limit": power_watts}
+        return await self.async_send_evc_command(uuid, "adjust-charge-power-limit", params)
+
+    async def async_configure_evc_inverter_control(self, uuid, battery_priority=True, pv_divert=True):
+        """
+        Configure EVC inverter control settings
+        - battery_priority: Use battery for charging
+        - pv_divert: Divert excess PV to EV charging
+        """
+        params = {"battery_priority": battery_priority, "pv_divert": pv_divert}
+        return await self.async_send_evc_command(uuid, "configure-inverter-control", params)
+
+    async def async_set_evc_plug_and_go(self, uuid, enabled=True):
+        """
+        Enable/disable plug and charge mode
+        """
+        params = {"enabled": enabled}
+        return await self.async_send_evc_command(uuid, "set-plug-and-go", params)
+
+    async def async_set_evc_active_schedule(self, uuid, schedule_id):
+        """
+        Activate a specific charging schedule
+        """
+        params = {"schedule_id": schedule_id}
+        return await self.async_send_evc_command(uuid, "set-active-schedule", params)
+
+    async def async_delete_evc_schedule(self, uuid):
+        """
+        Delete/clear charging schedule
+        """
+        params = {}
+        return await self.async_send_evc_command(uuid, "delete-charging-profile", params)
+
+    async def apply_evc_charge_plan(self, car_n, charge_slots):
+        """
+        Apply PredBat's charging plan to the EVC
+        charge_slots is a list of time windows when charging should occur
+        """
+        if not self.evc_devices:
+            return False
+
+        # Use first EVC for now (could be extended for multiple chargers)
+        uuid = self.evc_devices[0]
+
+        # Convert PredBat slots to EVC schedule format
+        schedule_slots = []
+        for slot in charge_slots:
+            schedule_slots.append({"start_time": slot["start"].isoformat(), "end_time": slot["end"].isoformat(), "enabled": True})
+
+        # Apply the schedule
+        result = await self.async_set_evc_schedule(uuid, schedule_slots)
+        if result:
+            self.log("Applied EVC charging schedule for car {}: {} slots".format(car_n, len(schedule_slots)))
+        return result
+
+    async def set_evc_charge_mode_for_plan(self, mode="Grid", battery_priority=False):
+        """
+        Set the EVC mode based on PredBat's planning
+        For scheduled charging, typically use Grid mode
+        For solar charging, use Solar mode
+        """
+        if not self.evc_devices:
+            return False
+
+        uuid = self.evc_devices[0]
+
+        # Set the charging mode
+        mode_result = await self.async_set_evc_mode(uuid, mode)
+
+        # Configure inverter control
+        control_result = await self.async_configure_evc_inverter_control(uuid, battery_priority=battery_priority, pv_divert=(mode == "Solar"))
+
+        return mode_result and control_result
+
     async def async_read_inverter_setting(self, serial, setting_id):
         """
         Read a setting from the inverter

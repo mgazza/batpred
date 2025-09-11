@@ -351,6 +351,22 @@ pred_bat:
   #octopus_ready_time: 'time.ohme_target_time'
   #octopus_charge_limit: 'number.ohme_target_percent'
 
+  # GivEnergy EVC Control - Enable direct control of GivEnergy EV chargers
+  # When enabled, PredBat will directly control your GivEnergy EVC using schedules
+  # rather than requiring Home Assistant automations
+  #givenergy_evc_enable: True
+
+  # GivEnergy EVC UUID - The UUID of your EV charger (found in GE Cloud)
+  # Leave blank to auto-detect the first available EVC
+  #givenergy_evc_uuid: ''
+
+  # GivEnergy EVC Charging Mode - Default charging mode
+  # Options: 'Grid' (charge from grid), 'Solar' (excess solar only), 'Mixed' (both)
+  #givenergy_evc_mode: 'Grid'
+
+  # GivEnergy EVC Battery Priority - Allow charging from home battery
+  #givenergy_evc_battery_priority: False
+
   # Set this to False if you use Octopus Intelligent slot for car planning but when on another tariff e.g. Agile
   #octopus_slot_low_rate: False
 

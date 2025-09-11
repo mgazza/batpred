@@ -657,6 +657,86 @@ class PredBat(hass.Hass, Octopus, Energidataservice, Solcast, GECloud, Alertfeed
         self.minutes_to_midnight = 24 * 60 - self.minutes_now
         self.log("--------------- PredBat - update at {} with clock skew {} minutes, minutes now {}".format(now_utc, skew, self.minutes_now))
 
+    def apply_givenergy_evc_schedule(self):
+        """
+        Apply car charging schedule to GivEnergy EVC
+        """
+        if not hasattr(self, "gecloud") or not self.gecloud:
+            self.log("GivEnergy EVC control enabled but GE Cloud not configured")
+            return
+
+        if not self.gecloud.evc_devices:
+            self.log("No GivEnergy EVC devices found")
+            return
+
+        # Check if we're using Intelligent Octopus (auto-detect from tariff)
+        intelligent_mode = False
+        if hasattr(self, "octopus_intelligent_charging") and self.octopus_intelligent_charging:
+            intelligent_mode = True
+        elif hasattr(self, "octopus") and self.octopus:
+            # Auto-detect from tariff code
+            import_tariff = self.octopus.tariffs.get("import", {})
+            tariff_code = import_tariff.get("tariffCode", "")
+            if "INTELLI-" in tariff_code:
+                intelligent_mode = True
+                self.log("Auto-detected Intelligent Octopus tariff: {}".format(tariff_code))
+
+        # Get EVC configuration
+        evc_mode = self.get_arg("givenergy_evc_mode", "Grid")
+        evc_battery_priority = self.get_arg("givenergy_evc_battery_priority", False)
+        evc_uuid = self.get_arg("givenergy_evc_uuid", "")
+
+        # Use specified UUID or first available
+        if not evc_uuid and self.gecloud.evc_devices:
+            evc_uuid = self.gecloud.evc_devices[0]
+
+        if not evc_uuid:
+            self.log("No GivEnergy EVC UUID available")
+            return
+
+        # Apply charging schedules for each car
+        for car_n in range(self.num_cars):
+            if not self.car_charging_slots[car_n]:
+                self.log("Car {} has no charging slots planned".format(car_n))
+                continue
+
+            # Convert PredBat slots to EVC schedule format
+            schedule_slots = []
+            for slot in self.car_charging_slots[car_n]:
+                # Convert minutes to datetime
+                start_dt = self.midnight_utc + timedelta(minutes=slot["start"])
+                end_dt = self.midnight_utc + timedelta(minutes=slot["end"])
+
+                schedule_slots.append({"start_time": start_dt.isoformat(), "end_time": end_dt.isoformat(), "enabled": True})
+
+            # Apply the schedule via GE Cloud
+            try:
+                # Set charging mode based on configuration
+                if intelligent_mode:
+                    # For Intelligent Octopus, use Grid mode as Octopus controls the timing
+                    mode = "Grid"
+                    self.log("Using Grid mode for Intelligent Octopus charging")
+                else:
+                    mode = evc_mode
+
+                # Configure the EVC mode
+                self.call_service_wrapper("gecloud/set_evc_mode", uuid=evc_uuid, mode=mode)
+
+                # Configure inverter control settings
+                self.call_service_wrapper("gecloud/configure_evc_inverter_control", uuid=evc_uuid, battery_priority=evc_battery_priority, pv_divert=(mode == "Solar"))
+
+                # Apply the charging schedule
+                self.call_service_wrapper("gecloud/set_evc_schedule", uuid=evc_uuid, schedule_slots=schedule_slots)
+
+                self.log("Applied GivEnergy EVC schedule for car {}: {} slots in {} mode".format(car_n, len(schedule_slots), mode))
+
+                # Only handle first car for now (can be extended for multiple EVCs)
+                break
+
+            except Exception as e:
+                self.log("Error applying GivEnergy EVC schedule: {}".format(e))
+                self.log("Exception: {}".format(traceback.format_exc()))
+
     # @profile
     def update_pred(self, scheduled=True):
         """

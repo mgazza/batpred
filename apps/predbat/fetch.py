@@ -1320,6 +1320,10 @@ class Fetch:
         # Publish the car plan
         self.publish_car_plan()
 
+        # Apply GivEnergy EVC schedule if enabled
+        if self.get_arg("givenergy_evc_enable", False):
+            self.apply_givenergy_evc_schedule()
+
         # Work out iboost plan
         if self.iboost_enable and (((not self.iboost_solar) and (not self.iboost_charging)) or self.iboost_smart):
             self.iboost_plan = self.plan_iboost_smart()
