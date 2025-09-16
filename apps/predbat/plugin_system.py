@@ -20,14 +20,14 @@ class PluginSystem:
         self.base = base
         self.log = base.log
         self.plugins = {}
-        self.hooks = {"on_init": [], "on_update": [], "on_shutdown": [], "on_web_start": []}
+        self.hooks = {"on_init": [], "on_before_planning": [], "on_after_planning": [], "on_shutdown": [], "on_web_start": []}
 
     def register_hook(self, hook_name: str, callback: Callable):
         """
         Register a callback for a specific hook
 
         Args:
-            hook_name (str): Name of the hook ('on_init', 'on_update', 'on_shutdown', 'on_web_start')
+            hook_name (str): Name of the hook ('on_init', 'on_before_planning', 'on_after_planning', 'on_shutdown', 'on_web_start')
             callback (Callable): Function to call when hook is triggered
         """
         if hook_name not in self.hooks:

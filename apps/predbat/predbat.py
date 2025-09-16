@@ -691,6 +691,10 @@ class PredBat(hass.Hass, Octopus, Energidataservice, Solcast, GECloud, Alertfeed
             plan_age_minutes = plan_age.seconds / 60.0
             self.log("Plan was last updated on {} and is now {} minutes old".format(self.plan_last_updated, dp1(plan_age_minutes)))
 
+        # Call plugin before planning hooks
+        if self.plugin_system:
+            self.plugin_system.call_hooks("on_before_planning")
+
         # Calculate the new plan (or re-use existing)
         recompute = self.calculate_plan(recompute=recompute)
 
@@ -879,9 +883,9 @@ class PredBat(hass.Hass, Octopus, Energidataservice, Solcast, GECloud, Alertfeed
         self.expose_config("active", False)
         self.save_current_config()
 
-        # Call plugin update hooks
+        # Call plugin after planning hooks
         if self.plugin_system:
-            self.plugin_system.call_hooks("on_update")
+            self.plugin_system.call_hooks("on_after_planning")
 
         if self.comparison:
             if (scheduled and self.minutes_now < RUN_EVERY) or self.get_arg("compare_active", False):
