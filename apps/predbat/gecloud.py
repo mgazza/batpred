@@ -682,14 +682,23 @@ class GECloudDirect:
         # Auto-configure EV chargers if any are detected
         if evc_devices:
             evc_serials = []
+            self.log(f"GECloud: Processing {len(evc_devices)} EV charger devices for auto-configuration")
             for device_data in evc_devices:
                 uuid = device_data.get("uuid")
+                self.log(f"GECloud: Processing EV charger UUID: {uuid}")
                 if uuid:
-                    # Get full device details to extract serial number
-                    full_device = await self.async_get_evc_device(uuid)
-                    serial = full_device.get("serial_number")
-                    if serial:
-                        evc_serials.append(serial)
+                    try:
+                        # Get full device details to extract serial number
+                        full_device = await self.async_get_evc_device(uuid)
+                        self.log(f"GECloud: Retrieved device details: {full_device}")
+                        serial = full_device.get("serial_number")
+                        self.log(f"GECloud: Extracted serial number: {serial}")
+                        if serial:
+                            evc_serials.append(serial)
+                    except Exception as e:
+                        self.log(f"GECloud: Error getting device details for {uuid}: {e}")
+                        # Fallback to UUID if serial fetch fails
+                        evc_serials.append(uuid)
 
             if evc_serials:
                 num_cars = len(evc_serials)
