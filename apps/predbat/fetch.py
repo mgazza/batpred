@@ -2017,9 +2017,15 @@ class Fetch:
         self.previous_status = self.get_state_wrapper(self.prefix + ".status")
         forecast_hours = max(self.get_arg("forecast_hours", 48), 24)
 
+        # Debug: Log object information when setting num_cars from config
+        self.log(f"DEBUG: fetch_config_options object ID: {id(self)}")
+        self.log(f"DEBUG: fetch_config_options object type: {type(self)}")
+        self.log(f"DEBUG: fetch_config_options current num_cars = {getattr(self, 'num_cars', 'UNDEFINED')}")
+
         self.num_cars = self.get_arg("num_cars", 1)
         self.calculate_plan_every = max(self.get_arg("calculate_plan_every"), 5)
 
+        self.log(f"DEBUG: fetch_config_options set num_cars to {self.num_cars} from config")
         self.log("Configuration: forecast_hours {} num_cars {} debug enable is {} calculate_plan_every {}".format(forecast_hours, self.num_cars, self.debug_enable, self.calculate_plan_every))
 
         # Days previous

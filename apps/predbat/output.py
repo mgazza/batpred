@@ -531,8 +531,17 @@ class Output:
             html += "<th><b>Load kWh</b></th>"
         if plan_debug and self.load_forecast:
             html += "<th><b>XLoad kWh</b></th>"
+
+        # Debug: Log object information when checking num_cars
+        self.log(f"DEBUG: publish_html_plan object ID: {id(self)}")
+        self.log(f"DEBUG: publish_html_plan object type: {type(self)}")
+        self.log(f"DEBUG: publish_html_plan checking num_cars = {getattr(self, 'num_cars', 'UNDEFINED')}")
+
         if self.num_cars > 0:
+            self.log(f"DEBUG: Adding Car kWh column because num_cars = {self.num_cars}")
             html += "<th><b>Car kWh</b></th>"
+        else:
+            self.log(f"DEBUG: NOT adding Car kWh column because num_cars = {self.num_cars}")
         if self.iboost_enable:
             html += "<th><b>iBoost kWh</b></th>"
         html += "<th><b>SoC %</b></th>"
