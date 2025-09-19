@@ -1187,13 +1187,21 @@ class Fetch:
             self.octopus_intelligent_charging = False
 
         # Work out car SoC and reset next
-        self.car_charging_soc = [0.0 for car_n in range(self.num_cars)]
-        self.car_charging_soc_next = [None for car_n in range(self.num_cars)]
-        for car_n in range(self.num_cars):
-            if (car_n == 0) and self.car_charging_manual_soc:
-                self.car_charging_soc[car_n] = self.get_arg("car_charging_manual_soc_kwh")
-            else:
-                self.car_charging_soc[car_n] = (self.get_arg("car_charging_soc", 0.0, index=car_n) * self.car_charging_battery_size[car_n]) / 100.0
+        # Initialize car SOC arrays: use existing if populated by plugin, else config defaults (same pattern as num_cars)
+        if not hasattr(self, "car_charging_soc") or len(self.car_charging_soc) != self.num_cars:
+            # Only initialize with config values if arrays don't exist (don't overwrite plugin data)
+            self.car_charging_soc = [0.0 for car_n in range(self.num_cars)]
+            for car_n in range(self.num_cars):
+                if (car_n == 0) and self.car_charging_manual_soc:
+                    self.car_charging_soc[car_n] = self.get_arg("car_charging_manual_soc_kwh")
+                else:
+                    self.car_charging_soc[car_n] = (self.get_arg("car_charging_soc", 0.0, index=car_n) * self.car_charging_battery_size[car_n]) / 100.0
+            self.log(f"DEBUG: fetch_config_options initialized car_charging_soc from config: {self.car_charging_soc}")
+        else:
+            self.log(f"DEBUG: fetch_config_options preserving existing car_charging_soc from plugin: {self.car_charging_soc}")
+
+        if not hasattr(self, "car_charging_soc_next") or len(self.car_charging_soc_next) != self.num_cars:
+            self.car_charging_soc_next = [None for car_n in range(self.num_cars)]
         if self.num_cars:
             self.log("Cars: SoC kWh: {} Charge limit {} plan time {} battery size {}".format(self.car_charging_soc, self.car_charging_limit, self.car_charging_plan_time, self.car_charging_battery_size))
 
@@ -1851,8 +1859,11 @@ class Fetch:
         self.car_charging_plan_smart = [False for c in range(self.num_cars)]
         self.car_charging_plan_max_price = [0 for c in range(self.num_cars)]
         self.car_charging_plan_time = ["07:00:00" for c in range(self.num_cars)]
-        self.car_charging_battery_size = [100.0 for c in range(self.num_cars)]
-        self.car_charging_limit = [100.0 for c in range(self.num_cars)]
+        # Initialize car arrays: use existing if populated by plugin, else config defaults (same pattern as num_cars)
+        if not hasattr(self, "car_charging_battery_size") or len(self.car_charging_battery_size) != self.num_cars:
+            self.car_charging_battery_size = [100.0 for c in range(self.num_cars)]
+        if not hasattr(self, "car_charging_limit") or len(self.car_charging_limit) != self.num_cars:
+            self.car_charging_limit = [100.0 for c in range(self.num_cars)]
         self.car_charging_rate = [7.4 for c in range(max(self.num_cars, 1))]
         self.car_charging_slots = [[] for c in range(self.num_cars)]
         self.car_charging_exclusive = [False for c in range(self.num_cars)]
