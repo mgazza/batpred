@@ -704,6 +704,15 @@ class GECloudDirect:
                 num_cars = len(evc_serials)
                 self.base.args["num_cars"] = num_cars
                 self.base.args["car_charging_planned"] = ["sensor.predbat_gecloud_" + serial + "_evc_status" for serial in evc_serials]
+
+                # Initialize car arrays with sensible defaults to prevent crashes
+                # These will be updated by the Enode plugin with real data
+                if "car_charging_battery_size" not in self.base.args or len(self.base.args.get("car_charging_battery_size", [])) != num_cars:
+                    self.base.args["car_charging_battery_size"] = [75.0] * num_cars  # Default 75kWh (common EV size)
+                    self.base.args["car_charging_limit"] = [80.0] * num_cars  # Default 80% charge limit
+                    self.base.args["car_charging_soc"] = [50.0] * num_cars  # Default 50% SOC
+                    self.log(f"GECloud: Initialized car arrays with defaults for {num_cars} vehicles")
+
                 self.log(f"GECloud: Auto-configured {num_cars} EV chargers: {evc_serials}")
 
         self.log("GECloud: Automatic configuration complete")
