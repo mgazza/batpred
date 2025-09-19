@@ -683,7 +683,7 @@ class GECloudDirect:
         if evc_devices:
             evc_serials = []
             for device_data in evc_devices:
-                serial = device_data.get("serial", device_data.get("uuid"))
+                serial = device_data.get("serial_number", device_data.get("uuid"))
                 if serial:
                     evc_serials.append(serial)
 
@@ -744,7 +744,7 @@ class GECloudDirect:
                         await self.publish_info(device, self.info[device])
                     for uuid in evc_device_list:
                         self.evc_device[uuid] = await self.async_get_evc_device(uuid)
-                        serial = self.evc_device[uuid].get("serial", "unknown")
+                        serial = self.evc_device[uuid].get("serial_number", "unknown")
 
                         # Publish EV charger status as sensor entity
                         evc_status = self.evc_device[uuid].get("status", "unknown")
