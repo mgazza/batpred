@@ -2022,10 +2022,16 @@ class Fetch:
         self.log(f"DEBUG: fetch_config_options object type: {type(self)}")
         self.log(f"DEBUG: fetch_config_options current num_cars = {getattr(self, 'num_cars', 'UNDEFINED')}")
 
-        self.num_cars = self.get_arg("num_cars", 1)
-        self.calculate_plan_every = max(self.get_arg("calculate_plan_every"), 5)
+        # Set num_cars: use car array length if populated by plugin, else config value (same pattern as num_inverters)
+        car_array = getattr(self, "car_charging_battery_size", None)
+        if car_array and len(car_array) > 0:
+            self.num_cars = len(car_array)
+            self.log(f"DEBUG: fetch_config_options set num_cars to {self.num_cars} from car array length")
+        else:
+            self.num_cars = self.get_arg("num_cars", 1)
+            self.log(f"DEBUG: fetch_config_options set num_cars to {self.num_cars} from config")
 
-        self.log(f"DEBUG: fetch_config_options set num_cars to {self.num_cars} from config")
+        self.calculate_plan_every = max(self.get_arg("calculate_plan_every"), 5)
         self.log("Configuration: forecast_hours {} num_cars {} debug enable is {} calculate_plan_every {}".format(forecast_hours, self.num_cars, self.debug_enable, self.calculate_plan_every))
 
         # Days previous
