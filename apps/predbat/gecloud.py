@@ -393,6 +393,10 @@ class GECloudDirect:
         """
         Data passed in is a dictionary of measurands according to EVC_DATA_POINTS
         """
+        # Determine if vehicle is plugged in based on Current.Offered > 0
+        vehicle_plugged_in = False
+        current_offered = None
+
         for key in evc_data:
             entity_name = "sensor.predbat_gecloud_" + serial
             entity_name = entity_name.lower()
@@ -404,6 +408,10 @@ class GECloudDirect:
                 elif measurand == "Current.Import":
                     self.base.dashboard_item(entity_name + "_evc_current_import", state=state, attributes={"friendly_name": "EV Charger Current Import", "icon": "mdi:ev-station", "unit_of_measurement": "A", "device_class": "current"}, app="gecloud")
                 elif measurand == "Current.Offered":
+                    current_offered = state
+                    # Vehicle is considered plugged in if charger is offering current > 0
+                    if state and state > 0:
+                        vehicle_plugged_in = True
                     self.base.dashboard_item(entity_name + "_evc_current_offered", state=state, attributes={"friendly_name": "EV Charger Current Offered", "icon": "mdi:ev-station", "unit_of_measurement": "A", "device_class": "current"}, app="gecloud")
                 elif measurand == "Energy.Active.Export.Register":
                     self.base.dashboard_item(
@@ -431,6 +439,36 @@ class GECloudDirect:
                     self.base.dashboard_item(entity_name + "_evc_voltage", state=state, attributes={"friendly_name": "EV Charger Voltage", "icon": "mdi:ev-station", "unit_of_measurement": "V", "device_class": "voltage"}, app="gecloud")
                 elif measurand == "RPM":
                     self.base.dashboard_item(entity_name + "_evc_rpm", state=state, attributes={"friendly_name": "EV Charger Fan Speed", "icon": "mdi:ev-station", "unit_of_measurement": "RPM"}, app="gecloud")
+
+        # Update car_charging_planned array based on EV charger status
+        # This provides more accurate plugged-in detection than location-based heuristics
+        self._update_car_charging_planned_from_evc(vehicle_plugged_in, current_offered, serial)
+
+    def _update_car_charging_planned_from_evc(self, vehicle_plugged_in, current_offered, serial):
+        """
+        Update car_charging_planned array based on GivEnergy EV charger plugged-in status
+        """
+        try:
+            # Initialize car_charging_planned array if it doesn't exist
+            if not hasattr(self.base, "car_charging_planned"):
+                # Will be properly initialized by get_car_charging_planned() in fetch.py
+                return
+
+            # For now, assume first car corresponds to first EV charger
+            # TODO: Support multiple cars/chargers with proper mapping
+            car_index = 0
+            if len(self.base.car_charging_planned) > car_index:
+                old_status = self.base.car_charging_planned[car_index]
+                self.base.car_charging_planned[car_index] = vehicle_plugged_in
+
+                self.log(f"GE Cloud EVC {serial}: Vehicle plugged in status = {vehicle_plugged_in} (Current.Offered = {current_offered}A)")
+                if old_status != vehicle_plugged_in:
+                    self.log(f"GE Cloud EVC updated car {car_index} charging planned: {old_status} -> {vehicle_plugged_in}")
+            else:
+                self.log(f"GE Cloud EVC {serial}: No car slot available for plugged-in status (current_offered = {current_offered}A)")
+
+        except Exception as e:
+            self.log(f"ERROR: GE Cloud EVC failed to update car_charging_planned: {e}")
 
     async def publish_status(self, device, status):
         """

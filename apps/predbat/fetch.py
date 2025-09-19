@@ -1854,7 +1854,12 @@ class Fetch:
         """
         Get the car attributes
         """
-        self.car_charging_planned = [False for c in range(self.num_cars)]
+        # Initialize car_charging_planned array: use existing if populated by plugin, else config defaults
+        if not hasattr(self, "car_charging_planned") or len(self.car_charging_planned) != self.num_cars:
+            self.car_charging_planned = [False for c in range(self.num_cars)]
+            self.log(f"DEBUG: get_car_charging_planned initialized car_charging_planned from defaults: {self.car_charging_planned}")
+        else:
+            self.log(f"DEBUG: get_car_charging_planned preserving existing car_charging_planned from plugin: {self.car_charging_planned}")
         self.car_charging_now = [False for c in range(self.num_cars)]
         self.car_charging_plan_smart = [False for c in range(self.num_cars)]
         self.car_charging_plan_max_price = [0 for c in range(self.num_cars)]
