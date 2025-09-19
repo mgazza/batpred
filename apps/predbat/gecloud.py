@@ -683,9 +683,13 @@ class GECloudDirect:
         if evc_devices:
             evc_serials = []
             for device_data in evc_devices:
-                serial = device_data.get("serial_number", device_data.get("uuid"))
-                if serial:
-                    evc_serials.append(serial)
+                uuid = device_data.get("uuid")
+                if uuid:
+                    # Get full device details to extract serial number
+                    full_device = await self.async_get_evc_device(uuid)
+                    serial = full_device.get("serial_number")
+                    if serial:
+                        evc_serials.append(serial)
 
             if evc_serials:
                 num_cars = len(evc_serials)
