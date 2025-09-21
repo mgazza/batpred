@@ -230,6 +230,9 @@ class OhmeAPI:
 
                     if self.ohme_automatic_octopus_intelligent and self.client.serial:
                         await self.automatic_config_octopus_intelligent()
+                    elif self.client.serial:
+                        # Non-IOG users: increment num_cars and set car_charging_planned
+                        await self.configure_non_iog_charger()
 
                 first = False
 
@@ -254,6 +257,30 @@ class OhmeAPI:
         self.base.args["octopus_intelligent_slot"] = "binary_sensor.predbat_ohme_slot_active"
         self.base.args["octopus_ready_time"] = "select.predbat_ohme_target_time"
         self.base.args["octopus_charge_limit"] = "number.predbat_ohme_target_percent"
+
+    async def configure_non_iog_charger(self):
+        """
+        Configure car arrays for non-IOG Ohme users (similar to GivEnergy EVCs)
+        """
+        self.log("Info: Ohme API: Configuring for non-IOG user")
+
+        # Get current car_charging_planned array or create empty list
+        current_planned = self.base.args.get("car_charging_planned", [])
+        if not isinstance(current_planned, list):
+            current_planned = []
+
+        # Add Ohme status sensor to car_charging_planned
+        ohme_status_sensor = "sensor.predbat_ohme_status"
+        if ohme_status_sensor not in current_planned:
+            current_planned.append(ohme_status_sensor)
+            self.base.args["car_charging_planned"] = current_planned
+
+        # Increment num_cars for this charger
+        current_num_cars = self.base.args.get("num_cars", 0)
+        self.base.args["num_cars"] = current_num_cars + 1
+
+        self.log(f"Ohme: Found Ohme charger, increased num_cars from {current_num_cars} to {self.base.args['num_cars']}")
+        self.log(f"Ohme: Added {ohme_status_sensor} to car_charging_planned: {self.base.args['car_charging_planned']}")
 
     async def publish_data(self):
         """
