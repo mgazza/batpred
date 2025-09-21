@@ -72,8 +72,10 @@ Energi
 Energidata
 Energidataservice
 energydataservice
+Enode
 epod
 euids
+evcs
 evse
 feedin
 fentry
